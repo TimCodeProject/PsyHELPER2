@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PsyHELPER - AI помошник психолога</title>
+    <!-- Favicon -->
+    <link rel="icon" href="{{ url_for('static', filename='images/favicon.ico') }}">
+    
+    <!-- CSS Libraries -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/styles/github.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.css">
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code&display=swap" rel="stylesheet">
+    
+    <!-- Theme and Mobile Meta -->
+    <meta name="color-scheme" content="light dark">
+    <meta name="theme-color" content="#f5f6fa">
+    
+    <!-- Main CSS (исправленный путь) -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    <style>
+        /* Smooth theme transition */
+        html {
+            scroll-behavior: smooth;
+        }
+        
+        body {
+            transition: background-color 0.3s ease, color 0.3s ease;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+        
+        /* Prevents layout shift when scrollbar appears/disappears */
+        :root {
+            scrollbar-gutter: stable;
+        }
+        
+        /* Logo styles */
+        .logo-container {
+            display: flex;
+            align-items: center;
+            padding: 16px;
+            margin-bottom: 16px;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+            flex-direction: column;
+        }
+        
+        .logo-top {
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+        
+        .logo-img {
+            width: 32px;
+            height: 32px;
+            margin-right: 12px;
+        }
+        
+        .logo-text {
+            font-size: 20px;
+            font-weight: 600;
+            background: linear-gradient(90deg, #6a11cb 0%, #2575fc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-fill-color: transparent;
+        }
+        
+        .logo-icon {
+            width: 24px;
+            height: 24px;
+            margin-top: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="logo-container">
+                <div class="logo-top">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="PsyHelper Logo" class="logo-img">
+                    <span class="logo-text">PsyHelper</span>
+                </div>
+            </div>
+            <div class="sidebar-header">
+                <button class="btn new-chat" aria-label="Создать новый чат">
+                    <i class="fas fa-plus" aria-hidden="true"></i> Новый Чат
+                </button>
+            </div>
+            <div class="chat-history" role="list">
+                <!-- Chat history items will be added here dynamically -->
+            </div>
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <i class="fas fa-user-circle" aria-hidden="true"></i>
+                    <span>Пользователь</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content">
+            <!-- Top Navigation -->
+            <nav class="top-nav" aria-label="Main navigation">
+                <div class="nav-tabs" role="tablist">
+                    <button class="tab-btn active" data-tab="therapy" role="tab" aria-selected="true">
+                        <i class="fas fa-heart" aria-hidden="true"></i> Психология
+                    </button>
+                    <button class="tab-btn" data-tab="analysis" role="tab" aria-selected="false">
+                        <i class="fas fa-brain" aria-hidden="true"></i> Когнитивка
+                    </button>
+                    <button class="tab-btn" data-tab="meditation" role="tab" aria-selected="false">
+                        <i class="fas fa-spa" aria-hidden="true"></i> Тестирования
+                    </button>
+                    <button class="tab-btn" data-tab="resources" role="tab" aria-selected="false">
+                        <i class="fas fa-book" aria-hidden="true"></i> Ресурсы
+                    </button>
+                </div>
+                <div class="theme-toggle">
+                    <button id="theme-toggle" aria-label="Toggle theme">
+                        <i class="fas fa-moon" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </nav>
+
+            <!-- Chat Container -->
+            <main class="chat-container" aria-live="polite">
+                <div class="chat-messages" role="log">
+                    <!-- Messages will be added here dynamically -->
+                </div>
+                <div class="typing-indicator" style="display: none;" aria-hidden="true">
+                    <div class="dot-flashing"></div>
+                    <span>                       PsyHELPER размышляет ...</span>
+                </div>
+                <div class="input-area">
+                    <form id="chat-form" role="form">
+                        <div class="file-upload">
+                            <input type="file" id="file-input" multiple accept="image/*" aria-label="Attach files">
+                            <label for="file-input" class="attach-btn" tabindex="0">
+                                <i class="fas fa-paperclip" aria-hidden="true"></i>
+                            </label>
+                        </div>
+                        <input type="text" id="chat-input" placeholder="Спросите что нибудь..." autocomplete="off" aria-label="Напишите сообщение">
+                        <button type="submit" class="send-btn" aria-label="Отправить сообщение">
+                            <i class="fas fa-arrow-up" aria-hidden="true"></i>
+                        </button>
+                    </form>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- JavaScript Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.4/dist/contrib/auto-render.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.7.0/highlight.min.js"></script>
+    
+    <!-- Main JS (исправленный путь) -->
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
