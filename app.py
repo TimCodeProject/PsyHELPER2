@@ -5,7 +5,6 @@ import g4f
 from werkzeug.utils import secure_filename
 from datetime import datetime
 
-app = Flask(__name__)
 
 # Конфигурация
 app.config.update({
