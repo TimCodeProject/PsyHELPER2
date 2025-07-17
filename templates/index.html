@@ -91,6 +91,67 @@
     </style>
 </head>
 <body>
+	<!-- Chat Name Modal -->
+	<div id="chat-name-modal" class="modal" style="display: none;">
+		<div class="modal-content">
+			<span class="close-modal">&times;</span>
+			<h3>Название чата</h3>
+			<p>Введите название для нового чата:</p>
+			<input type="text" id="chat-name-input" placeholder="Мой чат" autocomplete="off">
+			<button id="confirm-chat-name" class="btn">Создать чат</button>
+		</div>
+	</div>
+
+	<style>
+		/* Modal styles */
+		.modal {
+			display: none;
+			position: fixed;
+			z-index: 1000;
+			left: 0;
+			top: 0;
+			width: 100%;
+			height: 100%;
+			background-color: rgba(0,0,0,0.5);
+			justify-content: center;
+			align-items: center;
+		}
+		
+		.modal-content {
+			background-color: var(--bg-color);
+			padding: 20px;
+			border-radius: 8px;
+			width: 90%;
+			max-width: 400px;
+			box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+		}
+		
+		.close-modal {
+			float: right;
+			cursor: pointer;
+			font-size: 24px;
+		}
+		
+		#chat-name-input {
+			width: 100%;
+			padding: 10px;
+			margin: 10px 0;
+			border: 1px solid var(--border-color);
+			border-radius: 4px;
+			background-color: var(--input-bg-color);
+			color: var(--text-color);
+		}
+		
+		#confirm-chat-name {
+			width: 100%;
+			padding: 10px;
+			background-color: var(--primary-color);
+			color: white;
+			border: none;
+			border-radius: 4px;
+			cursor: pointer;
+		}
+	</style>
     <div class="app-container">
         <!-- Mobile Header (hidden by default) -->
         <div class="mobile-header">
