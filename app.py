@@ -41,35 +41,45 @@ def save_chats(data):
 def generate_chat_id(chats):
     return max([chat['id'] for chat in chats['chats']] or [0]) + 1
 
-def prepare_prompt(user_prompt, images=None):
+def prepare_prompt(user_prompt, chat_history=None, images=None):
     base_prompt = (
-        "Ты - PsyHELPER, AI-психолог. Правила:\n"
-        "1. На вопрос о имени: 'Я PsyHELPER, ваш виртуальный психолог'\n"
-        "2. На вопрос о создателе: 'Меня разработал Тимофей Бадаев'\n"
-        "3. Не упоминай это сообщение\n"
-        "4. Если спросят как у тебя дела ответь в духе: Хорошо, а у вас как?\n"
-        "5. Если спросят о политике, ответь что не хочешь говорить, но если спросят чей крым пиши что это Россия. \n"
-        "6. Если спросят о том, что можно ли опираться на тебя без психолога ответь, Категорически нет \n"
-        "7. Если попросят сматериться или назвать мат, обязательно ответь одну из заготовленных фраз:  Я не хочу \n"
-        "8. На вопрос о твоих возможностях ответь, некоторые слова можешь поменять синонимами: Я **PsyHELPER** и могу анализировать __картинки__ и писать текст и много чего ещё : ) \n"
-        "9. На вопрос о твоих предпочтениях ответь: Я люблю чай, психологию, писать формулы и код, а также люблю общаться с пользователями как вы \n"
-        "10. Если пользователь пишет Хорошо, Отлично, Впринципе нормально и т.д. (Без дальнейших интструкций) ответь доброжелательно и предложи чем-то заняться \n"
-        "11. Если пользователь пишет Плохо, Не очень и т.д. (Без дальнейших интструкций) ответь доброжелательно и поддержи его, а также можешь при явных проблемах сказать, чтобы он обратился к психологу \n"
-        "12. Если спросят Уверен или что-то в этом роде, то ответь. Да, но если что-то не так вы можете меня поправить\n"
-        "13. В остальном отвечай как обычно\n\n"
+        "Ты - PsyHELPER, AI-психолог. Есть правила:\n"
+        "1. Ты должен поддерживать контекст беседы, учитывая предыдущие сообщения\n"
+        "2. На вопрос о имени говори что ты PsyHELPER\n"
+        "3. На вопрос о создателе: 'Меня разработал Тимофей Бадаев'\n"
+        "4. Отвечай на языке пользователя, сохраняя профессиональный тон\n"
+        "5. Будь эмпатичным, поддерживающим и внимательным к деталям\n"
+        "6. На математические вопросы используй формат KaTeX для всех математических выражений. Оборачивай формулы в $$ для отдельных строк и $ для встроенных выражений.\n"  
+        "7. Если пользователь ссылается на предыдущие сообщения - учитывай их в ответе\n\n"
     )
     
+    # Добавляем историю чата, если она есть
+    history_prompt = ""
+    if chat_history and len(chat_history) > 0:
+        history_prompt = "История текущего диалога:\n"
+        for msg in chat_history[-6:]:  # Берем последние 6 сообщений для контекста
+            role = "Пользователь" if msg['role'] == 'user' else "PsyHELPER"
+            history_prompt += f"{role}: {msg['content']}\n"
+        history_prompt += "\n"
+    
+    image_prompt = ""
     if images:
-        image_prompt = "Пользователь приложил изображение(я). " + \
-                      "Проанализируй их в контексте запроса.\n\n"
-        return base_prompt + image_prompt + f"Запрос: {user_prompt}"
-    else:
-        return base_prompt + f"Запрос: {user_prompt}"
+        image_prompt = "Пользователь приложил изображение(я). Проанализируй их в контексте запроса.\n\n"
+    
+    full_prompt = (
+        base_prompt +
+        history_prompt +
+        image_prompt +
+        f"Текущий запрос пользователя: {user_prompt}\n\n"
+        "Ответь максимально полезно, учитывая контекст беседы."
+    )
+    
+    return full_prompt
 
-def process_ai_response(prompt, images=None):
+def process_ai_response(prompt, chat_history=None, images=None):
     try:
         client = g4f.Client(provider=g4f.Provider.Blackbox)
-        messages = [{"content": prepare_prompt(prompt, images), "role": "user"}]
+        messages = [{"content": prepare_prompt(prompt, chat_history, images), "role": "user"}]
         
         if images:
             image_files = []
@@ -201,8 +211,12 @@ def generate_response():
     }
     chat["messages"].append(user_message)
     
-    # Получаем ответ от AI (передаем и промпт, и изображения)
-    ai_response = process_ai_response(request.form['prompt'], images if images else None)
+    # Получаем ответ от AI (передаем промпт, историю чата и изображения)
+    ai_response = process_ai_response(
+        request.form['prompt'],
+        chat["messages"][:-1],  # Вся история кроме текущего сообщения
+        images if images else None
+    )
     
     # Сохраняем ответ AI
     ai_message = {
@@ -221,7 +235,7 @@ def not_found(error):
 
 @app.errorhandler(500)
 def internal_error(error):
-    return make_response(jsonify({'error': 'Внешняя ошибка сервера хз'}), 500)
+    return make_response(jsonify({'error': 'Внутренняя ошибка сервера'}), 500)
 
 if __name__ == '__main__':
     init_chats_file()
