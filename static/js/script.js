@@ -8,6 +8,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const newChatBtn = document.querySelector('.new-chat');
     const chatHistory = document.querySelector('.chat-history');
     const themeToggle = document.getElementById('theme-toggle');
+    const chatNameModal = document.getElementById('chat-name-modal');
+    const chatNameInput = document.getElementById('chat-name-input');
+    const confirmChatNameBtn = document.getElementById('confirm-chat-name');
+    const closeModalBtn = document.querySelector('.close-modal');
     
     let currentChatId = null;
     let isDarkTheme = localStorage.getItem('theme') === 'dark';
@@ -56,7 +60,7 @@ document.addEventListener('DOMContentLoaded', function() {
         themeToggle.addEventListener('click', toggleTheme);
         
         // New chat button
-        newChatBtn.addEventListener('click', createNewChat);
+        newChatBtn.addEventListener('click', openChatNameModal);
         
         // Chat form submission
         chatForm.addEventListener('submit', function(e) {
@@ -71,10 +75,56 @@ document.addEventListener('DOMContentLoaded', function() {
         // File input change
         fileInput.addEventListener('change', function() {
             if (this.files.length > 0 && currentChatId) {
-                const message = chatInput.value.trim() || "Analyze these images";
+                const message = chatInput.value.trim() || "Анализируй это изображение";
                 sendMessage(message, this.files);
                 this.value = ''; // Reset file input
             }
+        });
+        
+        // Modal event listeners
+        confirmChatNameBtn.addEventListener('click', createNewChatWithName);
+        closeModalBtn.addEventListener('click', closeChatNameModal);
+        chatNameModal.addEventListener('click', function(e) {
+            if (e.target === chatNameModal) {
+                closeChatNameModal();
+            }
+        });
+    }
+    
+    // Modal functions
+    function openChatNameModal() {
+        chatNameInput.value = '';
+        chatNameModal.style.display = 'flex';
+        chatNameInput.focus();
+    }
+
+    function closeChatNameModal() {
+        chatNameModal.style.display = 'none';
+    }
+
+    function createNewChatWithName() {
+        const chatName = chatNameInput.value.trim() || 'Новый чат';
+        closeChatNameModal();
+        
+        fetch('/api/chats', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ title: chatName })
+        })
+        .then(response => {
+            if (!response.ok) throw new Error('Проблемы с инетом');
+            return response.json();
+        })
+        .then(chat => {
+            currentChatId = chat.id;
+            loadChats();
+            clearChatMessages();
+        })
+        .catch(error => {
+            console.error('Ошибка создания чата:', error);
+            showErrorToast('Не получилось создать чат');
         });
     }
     
@@ -97,7 +147,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (data.chats.length > 0) {
                     loadChat(data.chats[0].id);
                 } else {
-                    createNewChat();
+                    createNewChatWithName();
                 }
             })
             .catch(error => {
@@ -141,30 +191,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Create a new chat
-    function createNewChat() {
-        fetch('/api/chats', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ title: 'Новый чат' })
-        })
-        .then(response => {
-            if (!response.ok) throw new Error('Проблемы с инетом');
-            return response.json();
-        })
-        .then(chat => {
-            currentChatId = chat.id;
-            loadChats();
-            clearChatMessages();
-        })
-        .catch(error => {
-            console.error('Ошибка создания чата:', error);
-            showErrorToast('Не получилось создать чат');
-        });
-    }
-    
     // Delete a chat
     function deleteChat(chatId) {
         if (confirm('Ты уверен что хочешь удалить этот чат?')) {
@@ -186,7 +212,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         const newChatId = parseInt(firstChat.querySelector('.delete-chat').dataset.id);
                         loadChat(newChatId);
                     } else {
-                        createNewChat();
+                        createNewChatWithName();
                     }
                 }
             })
