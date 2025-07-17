@@ -20,6 +20,11 @@
     <meta name="color-scheme" content="light dark">
     <meta name="theme-color" content="#f5f6fa">
     
+    <!-- Preload icons -->
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-solid-900.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-brands-400.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/webfonts/fa-regular-400.woff2" as="font" type="font/woff2" crossorigin>
+    
     <!-- Main CSS (исправленный путь) -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     
@@ -78,10 +83,28 @@
             height: 24px;
             margin-top: 8px;
         }
+        
+        /* Mobile header styles */
+        .mobile-header {
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div class="app-container">
+        <!-- Mobile Header (hidden by default) -->
+        <div class="mobile-header">
+            <div class="logo-top">
+                <img src="{{ url_for('static', filename='images/logo.png') }}" alt="PsyHelper Logo" class="logo-img">
+                <span class="logo-text">PsyHelper</span>
+            </div>
+            <div class="theme-toggle">
+                <button id="mobile-theme-toggle" aria-label="Toggle theme">
+                    <i class="fas fa-moon" aria-hidden="true"></i>
+                </button>
+            </div>
+        </div>
+
         <!-- Sidebar -->
         <div class="sidebar">
             <div class="logo-container">
@@ -148,7 +171,7 @@
                                 <i class="fas fa-paperclip" aria-hidden="true"></i>
                             </label>
                         </div>
-                        <input type="text" id="chat-input" placeholder="Спросите что нибудь..." autocomplete="off" aria-label="Напишите сообщение">
+                        <input type="text" id="chat-input" placeholder="Спросите что-нибудь..." autocomplete="off" aria-label="Напишите сообщение">
                         <button type="submit" class="send-btn" aria-label="Отправить сообщение">
                             <i class="fas fa-arrow-up" aria-hidden="true"></i>
                         </button>
@@ -166,5 +189,23 @@
     
     <!-- Main JS (исправленный путь) -->
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+    
+    <script>
+        // Ensure icons are loaded
+        document.addEventListener('DOMContentLoaded', function() {
+            // Preload icons
+            const icons = [
+                'fa-plus', 'fa-user-circle', 'fa-heart', 'fa-brain', 
+                'fa-spa', 'fa-book', 'fa-moon', 'fa-paperclip', 'fa-arrow-up'
+            ];
+            
+            icons.forEach(icon => {
+                const el = document.createElement('i');
+                el.className = `fas ${icon}`;
+                el.style.display = 'none';
+                document.body.appendChild(el);
+            });
+        });
+    </script>
 </body>
 </html>
