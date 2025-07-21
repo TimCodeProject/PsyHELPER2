@@ -2,7 +2,7 @@
 <html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>PsyHELPER - AI помошник психолога</title>
     <!-- Favicon -->
     <link rel="icon" href="{{ url_for('static', filename='images/favicon.ico') }}">
@@ -29,7 +29,11 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     
     <style>
-        /* Smooth theme transition */
+        /* Общие стили */
+        :root {
+            scrollbar-gutter: stable;
+        }
+        
         html {
             scroll-behavior: smooth;
         }
@@ -41,52 +45,219 @@
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
         }
         
-        /* Prevents layout shift when scrollbar appears/disappears */
-        :root {
-            scrollbar-gutter: stable;
+        /* Стили для мобильных устройств */
+        @media (max-width: 767px) {
+            .mobile-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 12px 16px;
+                background-color: var(--bg-color);
+                border-bottom: 1px solid var(--border-color);
+                position: sticky;
+                top: 0;
+                z-index: 100;
+            }
+            
+            .mobile-header .logo-top {
+                display: flex;
+                align-items: center;
+            }
+            
+            .mobile-header .logo-img {
+                width: 28px;
+                height: 28px;
+                margin-right: 10px;
+            }
+            
+            .mobile-header .logo-text {
+                font-size: 18px;
+                font-weight: 600;
+                background: linear-gradient(90deg, #6a11cb 0%, #2575fc 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                text-fill-color: transparent;
+            }
+            
+            .mobile-header .theme-toggle button {
+                background: none;
+                border: none;
+                color: var(--text-color);
+                font-size: 18px;
+                padding: 8px;
+            }
+            
+            .logo-container {
+                display: none !important;
+            }
+            
+            .app-container {
+                flex-direction: column;
+                height: 100vh;
+            }
+            
+            .sidebar {
+                display: none !important;
+            }
+            
+            .main-content {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+            
+            .top-nav {
+                display: none !important;
+            }
+            
+            .chat-container {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                padding: 0 16px;
+            }
+            
+            .chat-messages {
+                flex: 1;
+                overflow-y: auto;
+                padding: 16px 0;
+            }
+            
+            .input-area {
+                padding: 12px 0;
+                position: sticky;
+                bottom: 0;
+                background-color: var(--bg-color);
+            }
         }
         
-        /* Logo styles */
-        .logo-container {
-            display: flex;
-            align-items: center;
-            padding: 16px;
-            margin-bottom: 16px;
-            border-bottom: 1px solid rgba(0,0,0,0.1);
-            flex-direction: column;
+        /* Стили для ПК (как было раньше) */
+        @media (min-width: 768px) {
+            .mobile-header {
+                display: none !important;
+            }
+            
+            .logo-container {
+                display: flex;
+                align-items: center;
+                padding: 16px;
+                margin-bottom: 16px;
+                border-bottom: 1px solid rgba(0,0,0,0.1);
+                flex-direction: column;
+            }
+            
+            .logo-top {
+                display: flex;
+                align-items: center;
+                width: 100%;
+            }
+            
+            .logo-img {
+                width: 32px;
+                height: 32px;
+                margin-right: 12px;
+            }
+            
+            .logo-text {
+                font-size: 20px;
+                font-weight: 600;
+                background: linear-gradient(90deg, #6a11cb 0%, #2575fc 100%);
+                -webkit-background-clip: text;
+                -webkit-text-fill-color: transparent;
+                background-clip: text;
+                text-fill-color: transparent;
+            }
+            
+            .logo-icon {
+                width: 24px;
+                height: 24px;
+                margin-top: 8px;
+            }
+            
+            .app-container {
+                display: flex;
+                height: 100vh;
+            }
+            
+            .sidebar {
+                display: flex;
+                flex-direction: column;
+                width: 280px;
+                border-right: 1px solid var(--border-color);
+                background-color: var(--bg-color);
+            }
+            
+            .main-content {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+                overflow: hidden;
+            }
+            
+            .top-nav {
+                display: flex;
+                justify-content: space-between;
+                padding: 12px 16px;
+                border-bottom: 1px solid var(--border-color);
+                background-color: var(--bg-color);
+            }
+            
+            .chat-container {
+                flex: 1;
+                display: flex;
+                flex-direction: column;
+            }
         }
         
-        .logo-top {
-            display: flex;
-            align-items: center;
-            width: 100%;
-        }
-        
-        .logo-img {
-            width: 32px;
-            height: 32px;
-            margin-right: 12px;
-        }
-        
-        .logo-text {
-            font-size: 20px;
-            font-weight: 600;
-            background: linear-gradient(90deg, #6a11cb 0%, #2575fc 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            text-fill-color: transparent;
-        }
-        
-        .logo-icon {
-            width: 24px;
-            height: 24px;
-            margin-top: 8px;
-        }
-        
-        /* Mobile header styles */
-        .mobile-header {
+        /* Общие стили для модального окна */
+        .modal {
             display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background-color: var(--bg-color);
+            padding: 20px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+        
+        .close-modal {
+            float: right;
+            cursor: pointer;
+            font-size: 24px;
+        }
+        
+        #chat-name-input {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background-color: var(--input-bg-color);
+            color: var(--text-color);
+        }
+        
+        #confirm-chat-name {
+            width: 100%;
+            padding: 10px;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
         }
     </style>
 </head>
@@ -102,58 +273,8 @@
 		</div>
 	</div>
 
-	<style>
-		/* Modal styles */
-		.modal {
-			display: none;
-			position: fixed;
-			z-index: 1000;
-			left: 0;
-			top: 0;
-			width: 100%;
-			height: 100%;
-			background-color: rgba(0,0,0,0.5);
-			justify-content: center;
-			align-items: center;
-		}
-		
-		.modal-content {
-			background-color: var(--bg-color);
-			padding: 20px;
-			border-radius: 8px;
-			width: 90%;
-			max-width: 400px;
-			box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-		}
-		
-		.close-modal {
-			float: right;
-			cursor: pointer;
-			font-size: 24px;
-		}
-		
-		#chat-name-input {
-			width: 100%;
-			padding: 10px;
-			margin: 10px 0;
-			border: 1px solid var(--border-color);
-			border-radius: 4px;
-			background-color: var(--input-bg-color);
-			color: var(--text-color);
-		}
-		
-		#confirm-chat-name {
-			width: 100%;
-			padding: 10px;
-			background-color: var(--primary-color);
-			color: white;
-			border: none;
-			border-radius: 4px;
-			cursor: pointer;
-		}
-	</style>
     <div class="app-container">
-        <!-- Mobile Header (hidden by default) -->
+        <!-- Mobile Header (только для мобильных) -->
         <div class="mobile-header">
             <div class="logo-top">
                 <img src="{{ url_for('static', filename='images/logo.png') }}" alt="PsyHelper Logo" class="logo-img">
@@ -166,7 +287,7 @@
             </div>
         </div>
 
-        <!-- Sidebar -->
+        <!-- Sidebar (для ПК) -->
         <div class="sidebar">
             <div class="logo-container">
                 <div class="logo-top">
@@ -192,7 +313,7 @@
 
         <!-- Main Content -->
         <div class="main-content">
-            <!-- Top Navigation -->
+            <!-- Top Navigation (для ПК) -->
             <nav class="top-nav" aria-label="Main navigation">
                 <div class="nav-tabs" role="tablist">
                     <button class="tab-btn active" data-tab="therapy" role="tab" aria-selected="true">
@@ -266,6 +387,16 @@
                 el.style.display = 'none';
                 document.body.appendChild(el);
             });
+            
+            // Синхронизация переключения темы между мобильной и десктопной кнопками
+            const mobileThemeToggle = document.getElementById('mobile-theme-toggle');
+            const desktopThemeToggle = document.getElementById('theme-toggle');
+            
+            if (mobileThemeToggle && desktopThemeToggle) {
+                mobileThemeToggle.addEventListener('click', function() {
+                    desktopThemeToggle.click();
+                });
+            }
         });
     </script>
 </body>
