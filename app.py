@@ -4,6 +4,10 @@ from flask import Flask, render_template, request, jsonify, make_response
 import g4f
 from werkzeug.utils import secure_filename
 from datetime import datetime
+import requests
+from bs4 import BeautifulSoup
+import re
+from urllib.parse import urlparse
 
 app = Flask(__name__)
 
@@ -12,7 +16,10 @@ app.config.update({
     'UPLOAD_FOLDER': 'static/images',
     'MAX_CONTENT_LENGTH': 16 * 1024 * 1024,  # 16MB
     'CHATS_FILE': 'chats.json',
-    'ALLOWED_EXTENSIONS': {'png', 'jpg', 'jpeg', 'gif'}
+    'ALLOWED_EXTENSIONS': {'png', 'jpg', 'jpeg', 'gif'},
+    'SEARCH_ENABLED': True,  # Включить/выключить поиск в интернете
+    'SEARCH_LIMIT': 3,  # Количество результатов поиска
+    'SEARCH_DEPTH': 3000  # Максимальное количество символов для извлечения с каждой страницы
 })
 
 # Создаем необходимые директории
@@ -40,10 +47,111 @@ def save_chats(data):
 
 def generate_chat_id(chats):
     return max([chat['id'] for chat in chats['chats']] or [0]) + 1
+    
+def clean_text(text):
+    """Очистка текста от лишних пробелов и специальных символов"""
+    text = re.sub(r'\s+', ' ', text)
+    text = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', text)
+    return text.strip()
 
-def prepare_prompt(user_prompt, chat_history=None, images=None):
+def extract_main_content(url):
+    """Извлечение основного содержимого веб-страницы"""
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        response = requests.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        # Удаляем ненужные элементы
+        for element in soup(['script', 'style', 'nav', 'footer', 'iframe', 'noscript']):
+            element.decompose()
+        
+        # Пытаемся найти основной контент
+        article = soup.find('article')
+        if article:
+            text = article.get_text()
+        else:
+            text = soup.body.get_text() if soup.body else soup.get_text()
+        
+        text = clean_text(text)
+        return text[:app.config['SEARCH_DEPTH']]  # Ограничиваем длину текста
+    except Exception as e:
+        app.logger.error(f"Error extracting content from {url}: {str(e)}")
+        return None
+
+def search_web(query, limit=3):
+    """Поиск информации в интернете"""
+    try:
+        # Здесь можно использовать любой API поиска (Google, Bing, SerpAPI и т.д.)
+        # Для примера используем простой запрос к DuckDuckGo
+        url = f"https://html.duckduckgo.com/html/?q={query}"
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        }
+        response = requests.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        results = []
+        for result in soup.select('.result')[:limit]:
+            link = result.select_one('.result__a')
+            if not link:
+                continue
+                
+            url = link.get('href')
+            if not url or not url.startswith('http'):
+                continue
+                
+            title = link.get_text()
+            snippet = result.select_one('.result__snippet')
+            snippet_text = snippet.get_text() if snippet else ""
+            
+            # Извлекаем основной контент страницы
+            content = extract_main_content(url)
+            if not content:
+                continue
+                
+            results.append({
+                'title': title,
+                'url': url,
+                'snippet': snippet_text,
+                'content': content
+            })
+        
+        return results
+    except Exception as e:
+        app.logger.error(f"Search error: {str(e)}")
+        return []
+
+def prepare_search_context(search_results):
+    """Формирование контекста для нейросети на основе результатов поиска"""
+    if not search_results:
+        return ""
+    
+    context = "\n\nИнформация из интернета:\n"
+    for i, result in enumerate(search_results, 1):
+        context += f"\nИсточник {i}: {result['title']} ({result['url']})\n"
+        context += f"Контент: {result['content']}\n"
+    
+    return context
+
+def needs_web_search(prompt):
+    """Определяет, нужен ли поиск в интернете для данного запроса"""
+    # Ключевые фразы, требующие поиска в интернете
+    search_keywords = [
+        'новости', 'гугл', 'погугли', 'в гугле', 'загугли', 'актуальные данные', 'курс валют', 'погода', 
+        'свежая информация', 'последние события', 'найди в интернете',
+        'поищи в сети', 'когда был', 'кто такой', 'что такое',
+        'как работает', 'где найти', 'где купить', 'сколько стоит',
+        'как сделать', 'как приготовить', 'как исправить'
+    ]
+    
+    prompt_lower = prompt.lower()
+    return any(keyword in prompt_lower for keyword in search_keywords)    
+
+def prepare_prompt(user_prompt, chat_history=None, images=None, search_results=None):
     base_prompt = (
-        "Ты - PsyHELPER, AI-психолог. Есть правила:\n"
+        "Ты - PsyHELPER, AI-психолог. Твои данные актуальны на 21.07.2025 год. Есть правила:\n"
         "1. Ты должен поддерживать контекст беседы, учитывая предыдущие сообщения\n"
         "2. На вопрос о имени говори что ты PsyHELPER\n"
         "3. На вопрос о создателе: 'Меня разработал Тимофей Бадаев'\n"
@@ -62,6 +170,9 @@ def prepare_prompt(user_prompt, chat_history=None, images=None):
             history_prompt += f"{role}: {msg['content']}\n"
         history_prompt += "\n"
     
+    # Добавляем результаты поиска, если они есть
+    search_prompt = prepare_search_context(search_results) if search_results else ""
+    
     image_prompt = ""
     if images:
         image_prompt = "Пользователь приложил изображение(я). Проанализируй их в контексте запроса.\n\n"
@@ -69,17 +180,22 @@ def prepare_prompt(user_prompt, chat_history=None, images=None):
     full_prompt = (
         base_prompt +
         history_prompt +
+        search_prompt +
         image_prompt +
         f"Текущий запрос пользователя: {user_prompt}\n\n"
-        "Ответь максимально полезно, учитывая контекст беседы."
+        "Ответь максимально полезно, учитывая контекст беседы и предоставленную информацию."
     )
     
     return full_prompt
 
 def process_ai_response(prompt, chat_history=None, images=None):
     try:
+        search_results = []
+        if app.config['SEARCH_ENABLED'] and needs_web_search(prompt):
+            search_results = search_web(prompt, app.config['SEARCH_LIMIT'])
+        
         client = g4f.Client(provider=g4f.Provider.Blackbox)
-        messages = [{"content": prepare_prompt(prompt, chat_history, images), "role": "user"}]
+        messages = [{"content": prepare_prompt(prompt, chat_history, images, search_results), "role": "user"}]
         
         if images:
             image_files = []
