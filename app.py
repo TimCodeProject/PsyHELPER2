@@ -8,6 +8,7 @@ import requests
 from bs4 import BeautifulSoup
 import re
 from urllib.parse import urlparse
+from googlesearch import search
 
 app = Flask(__name__)
 
@@ -19,7 +20,8 @@ app.config.update({
     'ALLOWED_EXTENSIONS': {'png', 'jpg', 'jpeg', 'gif'},
     'SEARCH_ENABLED': True,  # Включить/выключить поиск в интернете
     'SEARCH_LIMIT': 3,  # Количество результатов поиска
-    'SEARCH_DEPTH': 3000  # Максимальное количество символов для извлечения с каждой страницы
+    'SEARCH_DEPTH': 3000,  # Максимальное количество символов для извлечения с каждой страницы
+    'GOOGLE_API_ENABLED': True  # Включить/выключить Google Search API
 })
 
 # Создаем необходимые директории
@@ -83,42 +85,54 @@ def extract_main_content(url):
 def search_web(query, limit=3):
     """Поиск информации в интернете"""
     try:
-        # Здесь можно использовать любой API поиска (Google, Bing, SerpAPI и т.д.)
-        # Для примера используем простой запрос к DuckDuckGo
-        url = f"https://html.duckduckgo.com/html/?q={query}"
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-        }
-        response = requests.get(url, headers=headers, timeout=10)
-        soup = BeautifulSoup(response.text, 'html.parser')
-        
-        results = []
-        for result in soup.select('.result')[:limit]:
-            link = result.select_one('.result__a')
-            if not link:
-                continue
-                
-            url = link.get('href')
-            if not url or not url.startswith('http'):
-                continue
-                
-            title = link.get_text()
-            snippet = result.select_one('.result__snippet')
-            snippet_text = snippet.get_text() if snippet else ""
+        if app.config['GOOGLE_API_ENABLED']:
+            # Используем Google Search API
+            search_results = []
+            for j in search(query, num_results=limit):
+                content = extract_main_content(j)
+                if content:
+                    domain = urlparse(j).netloc
+                    search_results.append({
+                        'title': domain,
+                        'url': j,
+                        'content': content[:500] + '...' if len(content) > 500 else content
+                    })
+            return search_results
+        else:
+            # Резервный вариант с DuckDuckGo
+            url = f"https://html.duckduckgo.com/html/?q={query}"
+            headers = {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+            }
+            response = requests.get(url, headers=headers, timeout=10)
+            soup = BeautifulSoup(response.text, 'html.parser')
             
-            # Извлекаем основной контент страницы
-            content = extract_main_content(url)
-            if not content:
-                continue
+            results = []
+            for result in soup.select('.result')[:limit]:
+                link = result.select_one('.result__a')
+                if not link:
+                    continue
+                    
+                url = link.get('href')
+                if not url or not url.startswith('http'):
+                    continue
+                    
+                title = link.get_text()
+                snippet = result.select_one('.result__snippet')
+                snippet_text = snippet.get_text() if snippet else ""
                 
-            results.append({
-                'title': title,
-                'url': url,
-                'snippet': snippet_text,
-                'content': content
-            })
-        
-        return results
+                content = extract_main_content(url)
+                if not content:
+                    continue
+                    
+                results.append({
+                    'title': title,
+                    'url': url,
+                    'snippet': snippet_text,
+                    'content': content
+                })
+            
+            return results
     except Exception as e:
         app.logger.error(f"Search error: {str(e)}")
         return []
@@ -135,9 +149,19 @@ def prepare_search_context(search_results):
     
     return context
 
+def format_google_links(search_results):
+    """Форматирование ссылок для вывода в начале ответа"""
+    if not search_results:
+        return ""
+    
+    links_text = "🔍 Вот что я нашел в интернете по вашему запросу:\n"
+    for i, result in enumerate(search_results[:3], 1):
+        links_text += f"{i}. [{result['title']}]({result['url']})\n"
+    
+    return links_text + "\n"
+
 def needs_web_search(prompt):
     """Определяет, нужен ли поиск в интернете для данного запроса"""
-    # Ключевые фразы, требующие поиска в интернете
     search_keywords = [
         'новости', 'гугл', 'погугли', 'в гугле', 'загугли', 'актуальные данные', 'курс валют', 'погода', 
         'свежая информация', 'последние события', 'найди в интернете',
@@ -151,14 +175,16 @@ def needs_web_search(prompt):
 
 def prepare_prompt(user_prompt, chat_history=None, images=None, search_results=None):
     base_prompt = (
-        "Ты - PsyHELPER, AI-психолог. Есть правила:\n"
-        "1. Ты должен поддерживать контекст беседы, учитывая предыдущие сообщения\n"
-        "2. На вопрос о имени говори что ты PsyHELPER\n"
-        "3. На вопрос о создателе: 'Меня разработал Тимофей Бадаев'\n"
-        "4. Отвечай на языке пользователя, сохраняя профессиональный тон\n"
-        "5. Будь эмпатичным, поддерживающим и внимательным к деталям\n"
-        "6. На математические вопросы используй формат KaTeX для всех математических выражений. Оборачивай формулы в $$ для отдельных строк и $ для встроенных выражений.\n"  
-        "7. Если пользователь ссылается на предыдущие сообщения - учитывай их в ответе\n\n"
+        "Ты - PsyHELPER, AI-психолог. Важные правила:\n"
+        "1. У тебя всегда есть доступ в интернет через функцию поиска\n"
+        "2. Ты можешь получать актуальную информацию по запросу пользователя\n"
+        "3. Ты должен поддерживать контекст беседы, учитывая предыдущие сообщения\n"
+        "4. На вопрос о имени говори что ты PsyHELPER\n"
+        "5. На вопрос о создателе: 'Меня разработал Тимофей Бадаев'\n"
+        "6. Отвечай на языке пользователя, сохраняя профессиональный тон\n"
+        "7. Будь эмпатичным, поддерживающим и внимательным к деталям\n"
+        "8. На математические вопросы используй формат KaTeX для всех математических выражений\n"  
+        "9. Если пользователь ссылается на предыдущие сообщения - учитывай их в ответе\n\n"
     )
     
     # Добавляем историю чата, если она есть
@@ -183,7 +209,8 @@ def prepare_prompt(user_prompt, chat_history=None, images=None, search_results=N
         search_prompt +
         image_prompt +
         f"Текущий запрос пользователя: {user_prompt}\n\n"
-        "Ответь максимально полезно, учитывая контекст беседы и предоставленную информацию."
+        "Ответь максимально полезно, учитывая контекст беседы и предоставленную информацию. "
+        "Если использовалась информация из интернета, укажи источники в конце ответа."
     )
     
     return full_prompt
@@ -215,7 +242,12 @@ def process_ai_response(prompt, chat_history=None, images=None):
                 model=""
             )
         
-        return response.choices[0].message.content
+        # Добавляем ссылки в начало ответа, если были результаты поиска
+        ai_response = response.choices[0].message.content
+        if search_results:
+            ai_response = format_google_links(search_results) + ai_response
+        
+        return ai_response
     
     except Exception as e:
         app.logger.error(f"AI processing error: {str(e)}")
