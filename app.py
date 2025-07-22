@@ -151,7 +151,7 @@ def needs_web_search(prompt):
 
 def prepare_prompt(user_prompt, chat_history=None, images=None, search_results=None):
     base_prompt = (
-        "Ты - PsyHELPER, AI-психолог. Твои данные актуальны на 21.07.2025 год. Есть правила:\n"
+        "Ты - PsyHELPER, AI-психолог. Есть правила:\n"
         "1. Ты должен поддерживать контекст беседы, учитывая предыдущие сообщения\n"
         "2. На вопрос о имени говори что ты PsyHELPER\n"
         "3. На вопрос о создателе: 'Меня разработал Тимофей Бадаев'\n"
